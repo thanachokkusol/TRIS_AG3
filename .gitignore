@@ -1,0 +1,8 @@
+tools/
+dist/
+.openai/
+*.json
+*.zip
+SHA256SUMS.txt
+*.cmd
+__pycache__/
