@@ -350,6 +350,12 @@ const dict={...(window.EGCO_DATA.editorial?.translations||{}),
 'เปิดเดโมข้อมูลสมมติ →':'Open sample project','← กลับชุดข้อมูลจริง':'Return to actual data','สร้างงานจริงจากแบบเดโม →':'Create a project from the demo',
 'ข้อมูลต้นทาง':'Source data','ที่มา':'Source','ข้อ':'Item','คน':'people','เต็ม 4':'out of 4','ไม่มีข้อมูล':'No data'
 };
+// English names from EGCO's published Board Skills Matrix.
+const boardNames='Prasert Sinsukprasert|Pasu Loharjun|Somkit Lertpaithoon|Supanit Chaiyawat|Parichart Sthapitanonda|Raweewan Bhuridej|Nujchanart Laohathaimongkol|Teerawut Wetatham|Patcharin Rapeepornpong|Pisut Painmanakul|Toshihiro Oki|Christopher Robert Starling|Shinichiro Suzuki|Fuminori Kudo|Tawatchai Sumranwanich'.split('|');
+for(const person of window.EGCO_DATA.people){
+ const match=/^P(0[1-9]|1[0-5])$/.exec(person.id);
+ if(match)dict[person.name]=boardNames[Number(match[1])-1];
+}
 const norm=s=>String(s).replace(/[\s\u200b\u00ad]+/g,' ').trim();
 const exact=new Map(Object.entries(dict).map(([a,b])=>[norm(a),b]));
 const replacements=Object.entries(dict).filter(([s])=>s.length>3).sort((a,b)=>b[0].length-a[0].length);
@@ -357,7 +363,7 @@ function text(s){if(lang==='th'||!/[ก-๙]/.test(s))return s;const hit=exact.g
 const originals=new WeakMap(),attrs=new WeakMap();
 function apply(root=document.body){document.documentElement.lang=lang;document.title=lang==='en'?'EGCO — Board Evaluation 2026':'EGCO — การประเมินคณะกรรมการ 2569';
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
- while(n=walker.nextNode()){if(n.parentElement?.closest('script,style,textarea,.respondent-comment,.approved-recommendations,[data-original-language]'))continue;if(!originals.has(n))originals.set(n,n.nodeValue);const value=lang==='th'?originals.get(n):text(originals.get(n));if(n.nodeValue!==value)n.nodeValue=value;}
+ while(n=walker.nextNode()){if(n.parentElement?.closest('script,style,textarea,.comment-body,.recommendation-content > :not(.analysis-extras),[data-original-language]'))continue;if(!originals.has(n))originals.set(n,n.nodeValue);const value=lang==='th'?originals.get(n):text(originals.get(n));if(n.nodeValue!==value)n.nodeValue=value;}
  root.querySelectorAll('[title],[aria-label],[placeholder]').forEach(el=>{let old=attrs.get(el);if(!old){old={};for(const a of ['title','aria-label','placeholder'])if(el.hasAttribute(a))old[a]=el.getAttribute(a);attrs.set(el,old);}for(const [a,v]of Object.entries(old))el.setAttribute(a,lang==='th'?v:text(v));});
  document.querySelectorAll('[data-language]').forEach(b=>{b.classList.toggle('active',b.dataset.language===lang);b.setAttribute('aria-pressed',String(b.dataset.language===lang));});
 }
@@ -579,7 +585,7 @@ function respondentComments(c){
 }
 function reportAnalysis(c){
  const hasRecommendations=c.f.kind==='committee'&&window.EGCO_DATA.editorial?.recommendations?.[reportTarget]?.[window.EGCOI18n?.get()||'th'];
- if(mode)return hasRecommendations?'':`<section class="panel report-analysis">${respondentComments(c)}</section>`;
+ if(mode)return hasRecommendations?'':`<section class="panel approved-recommendations"><h3>${window.EGCOI18n?.get()==='en'?'Observations and recommendations':'ข้อสังเกต/ข้อเสนอแนะ'}</h3>${respondentComments(c)}</section>`;
  const content=inlineAnalysis(c,analysisNode,!hasRecommendations);
  return content?`<section class="panel report-analysis">${content}</section>`:'';
 }
