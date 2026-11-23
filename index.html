@@ -500,13 +500,26 @@ function resultsPage(){const c=reportContext();const {f,r,other,rr,targets}=c;co
 }
 function onboarding(){const ps=P.people.filter(x=>x.active).length,fs=P.forms.filter(f=>f.status==='locked').length;return `<section class="hero"><div><span class="eyebrow">YOUR EVALUATION STARTS HERE</span><h2>จากข้อมูลที่กรอก สู่ภาพรวมที่อ่านง่าย</h2><p>ตั้งคณะและแบบสอบถามให้ตรงงานจริง ก่อนเริ่มกรอกคำตอบและวิเคราะห์ผล</p></div><div class="hero-score">${ps}<small>บุคคลในโครงการ</small></div></section>${mode?'<div class="notice">ยังไม่มีผลสำหรับมุมมองนี้ กลับโหมดทำงานเพื่อตั้งแบบสอบถามและกรอกข้อมูล</div>':`<div class="setup-cards"><button class="setup-card" data-act="page" data-page="people"><div class="setup-num">01</div><h3>คนและคณะ</h3><p>รายชื่อและคู่ไขว้พร้อมแล้ว กำหนดคณะและสมาชิกตามข้อมูลจริง</p><span class="status">${ps} คน · ${P.committees.length} คณะ →</span></button><button class="setup-card" data-act="page" data-page="forms"><div class="setup-num">02</div><h3>ออกแบบแบบสอบถาม</h3><p>ตั้งมิติ ด้าน ข้อ สเกลรายข้อ และน้ำหนักก่อนยืนยัน</p><span class="status">${fs} แบบที่ยืนยันแล้ว →</span></button><button class="setup-card" data-act="page" data-page="entry"><div class="setup-num">03</div><h3>กรอกคำตอบ</h3><p>บันทึกทีละชุด แยกให้คะแนน ไม่ตอบ และยังไม่กรอก</p><span class="status">${P.responses.length} ชุดคำตอบ →</span></button></div><section class="panel" style="margin-top:22px"><div class="panel-head"><div><h2>อยากเห็นหน้าผลก่อนเริ่มกรอก?</h2><p>เปิดโครงการตัวอย่างแยกต่างหาก ข้อมูลทำงานของคุณจะยังอยู่ครบ</p></div><button class="btn dark" data-act="switch-project">เปิดตัวอย่างแดชบอร์ด →</button></div><div class="notice" style="margin:0">โครงการจริงไม่มีคะแนนจำลองผูกกับรายชื่อจริง · ตัวอย่างใช้ชื่อสมมติและข้อมูลสมมติทั้งหมด</div></section>`}`;}
 function statPair(c,nodeID='root'){let a=M.findStat(c.r,nodeID),b=c.rr?M.findStat(c.rr,mean4()?M.counterpartId(P,c.f,c.other,nodeID):nodeID):null;return c.f.kind==='peer'?[b,a]:[a,b];}
-function seriesLegend(series){return `<div class="radar-legend">${series.map(s=>`<button type="button" class="series-toggle ${hiddenSeries.has(s.label)?'series-off':''}" data-act="toggle-series" data-series="${esc(s.label)}" aria-pressed="${!hiddenSeries.has(s.label)}"><i style="--series-color:${s.color}" class="legend-line ${s.mean?'dashed':''}"></i>${esc(s.label)}</button>`).join('')}</div>`;}
-function bars(c,nodes){const all=radarSeries(c),visible=all.filter(s=>!hiddenSeries.has(s.label));radarTooltipData={nodes,series:visible};return `<div class="dimension-bars">${nodes.map((n,i)=>`<div class="bar-row" data-radar-index="${i}" tabindex="0" aria-label="${esc(nodeName(n.node))}" aria-describedby="radarTooltip"><div class="bar-name"><button data-act="${reportTab==='overview'&&n.level==='dimension'?'select-dimension':'drill'}" data-id="${n.id}">${esc(nodeName(n.node))} →</button></div><div class="bar-tracks">${visible.filter(s=>!s.mean).map(s=>`<div class="track"><i style="background:${s.color};width:${ratio(s.values[i])*100}%"></i></div>`).join('')}${visible.filter(s=>s.mean&&s.values[i]!==null).map(s=>`<i class="bar-mean" style="left:${ratio(s.values[i])*100}%;border-color:${s.color}" title="${esc(s.label)} ${fmt(s.values[i])}"></i>`).join('')}</div><div class="bar-values">${visible.filter(s=>!s.mean).map(s=>`<span style="color:${s.color}">${fmt(s.values[i])}</span>`).join('')}</div></div>`).join('')}${axisTicks()}${seriesLegend(all)}</div>`;}
+function seriesLegend(series){return `<div class="radar-legend">${series.map(s=>`<button type="button" class="series-toggle ${hiddenSeries.has(s.label)?'series-off':''}" data-act="toggle-series" data-series="${esc(s.label)}" aria-pressed="${!hiddenSeries.has(s.label)}"><i style="--series-color:${s.color}" class="legend-line ${s.dash?'dashed':''}"></i>${esc(s.label)}</button>`).join('')}</div>`;}
+function bars(c,nodes){const all=radarSeries(c),visible=all.filter(s=>!hiddenSeries.has(s.label));radarTooltipData={nodes,series:visible};return `<div class="dimension-bars">${nodes.map((n,i)=>`<div class="bar-row" data-radar-index="${i}" tabindex="0" aria-label="${esc(nodeName(n.node))}" aria-describedby="radarTooltip"><div class="bar-name"><button data-act="${reportTab==='overview'&&n.level==='dimension'?'select-dimension':'drill'}" data-id="${n.id}">${esc(nodeName(n.node))} →</button></div><div class="bar-tracks">${visible.filter(s=>!s.mean).map(s=>`<div class="track"><i style="background:${s.dash?`repeating-linear-gradient(90deg,${s.color} 0 8px,transparent 8px 13px)`:s.color};width:${ratio(s.values[i])*100}%"></i></div>`).join('')}${visible.filter(s=>s.mean&&s.values[i]!==null).map(s=>`<i class="bar-mean" style="left:${ratio(s.values[i])*100}%;border-color:${s.color}" title="${esc(s.label)} ${fmt(s.values[i])}"></i>`).join('')}</div><div class="bar-values">${visible.filter(s=>!s.mean).map(s=>`<span style="color:${s.color}">${fmt(s.values[i])}</span>`).join('')}</div></div>`).join('')}${axisTicks()}${seriesLegend(all)}</div>`;}
 
 function radarSeries(c){
  const primary=c.f.kind==='peer'?c.other:c.f,peer=c.f.kind==='peer'?c.f:c.other;
  const actuals=c.r.children.map(x=>statPair(c,x.id));
- if(mean4()&&reportKind==='committee')return [{label:'ผลการประเมินรายคณะ',color:'#004485',values:actuals.map(a=>a[0]?.value??null),mean:false}];
+ if(mean4()){
+  const en=window.EGCOI18n?.get()==='en';
+  const com=reportKind==='committee';
+  const make=(previous,isPeer)=>{
+   const kind=com?'':isPeer?(en?' · Peer assessment':' · แบบไขว้'):(en?' · Self-assessment':' · ประเมินตนเอง');
+   const year=previous?(en?'2025':'2568'):(en?'2026':'2569');
+   const basis=previous&&!com?(en?' (form average)':' (เฉลี่ยรวม)'):'';
+   return {label:(en?'Scores ':'คะแนนปี ')+year+kind+basis,previous,isPeer,
+    color:previous?(isPeer?'#174d91':'#367cc1'):(isPeer?'#ad4d20':'#e88345'),
+    dash:previous?'8 6':'',yearSeries:true,
+    values:previous?c.r.children.map(x=>oldRaw(historyValues(c,x.id)[isPeer?1:0]?.h)):actuals.map(x=>x[isPeer?1:0]?.value??null)};
+  };
+  return Array.from({length:com||!peer?1:2},(_,i)=>[make(true,!!i),make(false,!!i)]).flat();
+ }
  const average=f=>{if(!f)return null;if(mean4()&&reportKind!=='committee')return M.averageReport(P,f)?.children.map(d=>d.value)??null;const targets=reportKind==='committee'?P.committees.filter(x=>!f.committeeIds.length||f.committeeIds.includes(x.id)):P.people.filter(x=>x.active);const stats=targets.map(x=>M.aggregate(P,f,x.id));return c.r.children.map((_,i)=>M.mean(stats.map(x=>x.children[i]?.value??null).filter(x=>x!==null)));};
  const series=[{label:reportKind==='committee'?'ผลการประเมินรายคณะ':'ผลการประเมินตนเอง',color:'#004485',values:actuals.map(a=>a[0]?.value??null),mean:false}];
  if(peer)series.push({label:'ผลการประเมินแบบไขว้',color:'#E50019',values:actuals.map(a=>a[1]?.value??null),mean:false});
@@ -520,9 +533,9 @@ function radar(c){
  const points=v=>ns.map((_,i)=>point(i,v).join(',')).join(' ');
  let svg=`<svg class="radar interactive-radar ${com?'committee-radar':''}" viewBox="${com?'0 0 1200 840':'0 0 720 510'}" role="img" aria-label="${mean4()?(percentView()?'เรดาร์ร้อยละ แกน 0 ถึง 100 เปอร์เซ็นต์':'เรดาร์คะแนนเฉลี่ย แกน 0 ถึง 4'):'เรดาร์คะแนนปรับสเกล 0 ถึง 100'}">${(mean4()?ringValues():[25,50,75,100]).map(v=>`<polygon points="${points(v)}" fill="none" stroke="#e1e8f0"/><text x="${cx+9}" y="${cy-ratio(v)*radius-3}" font-size="11" fill="#91a2b5">${mean4()?tickText(v):v}</text>`).join('')}`;
  ns.forEach((x,i)=>{const [a,b]=point(i,AX());svg+=`<line x1="${cx}" y1="${cy}" x2="${a}" y2="${b}" stroke="${analysisNode===x.id?'#7ba4cd':'#e5ebf2'}" stroke-width="${analysisNode===x.id?2:1}"/>`;});
- for(const s of radarTooltipData.series){if(s.values.every(x=>x!==null))svg+=`<polygon class="radar-series ${s.mean?'mean-series':''}" points="${s.values.map((v,i)=>point(i,v).join(',')).join(' ')}" fill="${s.mean?'none':s.color}" fill-opacity=".045" stroke="${s.color}" stroke-width="${s.mean?1.8:2.8}" ${s.mean?`stroke-dasharray="${s.dash}"`:''}/>`;}
+ for(const s of [...radarTooltipData.series].reverse()){if(s.values.every(x=>x!==null))svg+=`<polygon class="radar-series ${s.mean?'mean-series':''}" points="${s.values.map((v,i)=>point(i,v).join(',')).join(' ')}" fill="${s.mean?'none':s.color}" fill-opacity=".045" stroke="${s.color}" stroke-width="${s.mean?1.8:2.8}" ${s.dash?`stroke-dasharray="${s.dash}"`:''}/>`;}
  ns.forEach((x,i)=>{const [lx,ly]=point(i,AX(),com?315:215),labelX=com?(lx<cx-50?lx-280:lx>cx+50?lx:lx-140):(lx<315?lx-150:lx>405?lx:lx-75);svg+=`<g data-radar-index="${i}" data-act="select-dimension" data-id="${x.id}" class="radar-dimension ${analysisNode===x.id?'selected':''}" tabindex="0" role="button" aria-label="${esc(x.node.name)} เปิดบทวิเคราะห์" aria-describedby="radarTooltip">`;
- for(const s of radarTooltipData.series){const v=s.values[i];if(v!==null){const [px,py]=point(i,v);svg+=s.mean?`<circle cx="${px}" cy="${py}" r="3.1" fill="white" stroke="${s.color}" stroke-width="1.5"/>`:`<circle cx="${px}" cy="${py}" r="5.5" fill="${s.color}" stroke="white" stroke-width="2"/>`;if(com&&!s.mean)svg+=`<text class="committee-point-value" x="${px-12}" y="${py-12}" text-anchor="end" fill="${s.color}" font-size="16">${fmt(v)}</text>`;if(!com&&!s.mean){const right=px>cx+30,left=px<cx-30;const top=!right&&!left,tx=top?px-16:right?px-12:px+12,ty=py+(top?(s.color==='#004485'?25:43):(s.color==='#004485'?-18:0));svg+=`<text class="person-point-value" x="${tx}" y="${ty}" text-anchor="${top||right?'end':'start'}" fill="${s.color}" font-size="12" font-weight="600" stroke="white" stroke-width="3" paint-order="stroke" pointer-events="none">${fmt(v)}</text>`;}svg+=`<circle cx="${px}" cy="${py}" r="15" fill="transparent" class="radar-hit"/>`;}}
+ for(const s of radarTooltipData.series){const v=s.values[i];if(v!==null){const [px,py]=point(i,v);svg+=s.mean?`<circle cx="${px}" cy="${py}" r="3.1" fill="white" stroke="${s.color}" stroke-width="1.5"/>`:`<circle cx="${px}" cy="${py}" r="5.5" fill="${s.color}" stroke="white" stroke-width="2"/>`;if(com&&!s.mean)svg+=`<text class="committee-point-value" x="${px+(s.dash?12:-12)}" y="${py+(s.dash?19:-12)}" text-anchor="${s.dash?'start':'end'}" fill="${s.color}" font-size="16">${fmt(v)}</text>`;if(!com&&!s.mean&&!s.yearSeries){const right=px>cx+30,left=px<cx-30;const top=!right&&!left,tx=top?px-16:right?px-12:px+12,ty=py+(top?(s.color==='#004485'?25:43):(s.color==='#004485'?-18:0));svg+=`<text class="person-point-value" x="${tx}" y="${ty}" text-anchor="${top||right?'end':'start'}" fill="${s.color}" font-size="12" font-weight="600" stroke="white" stroke-width="3" paint-order="stroke" pointer-events="none">${fmt(v)}</text>`;}svg+=`<circle cx="${px}" cy="${py}" r="15" fill="transparent" class="radar-hit"/>`;}}
  svg+=`<foreignObject x="${labelX}" y="${ly-(com?70:24)}" width="${com?280:150}" height="${com?170:65}"><div xmlns="http://www.w3.org/1999/xhtml" class="radar-axis-label ${analysisNode===x.id?'selected':''}"><span class="axis-number">${i+1}.</span> <span class="axis-name">${esc(com?x.node.name:x.node.short||x.node.name)}</span></div></foreignObject></g>`;});
  svg+='</svg>';
  const legend=seriesLegend(radarSeries(c));
@@ -556,6 +569,10 @@ function committeeRespondentList(c){
  const ids=c.r.respondentIds||[];
  return `<div class="hero-respondents" aria-label="รายชื่อผู้ตอบแบบประเมิน"><p class="respondent-heading">ผู้ตอบที่ใช้คำนวณผล ${ids.length} คน</p>${ids.length?`<ul class="respondent-names">${ids.map(id=>`<li data-respondent-id="${esc(id)}">${esc(name(id))}</li>`).join('')}</ul>`:'<p>ยังไม่มีผู้ตอบที่ให้คะแนน</p>'}</div>`;
 }
+function reportAnalysis(c){
+ const content=inlineAnalysis(c,analysisNode);
+ return content?`<section class="panel report-analysis">${content}</section>`:'';
+}
 function inlineAnalysis(c,id='root'){
  let stat=M.findStat(c.r,id)||c.r;
  if(stat.level==='question'){const p=statPath(c.r,id);stat=p?.at(-2)||c.r;}
@@ -572,6 +589,15 @@ function inlineAnalysis(c,id='root'){
 function hideRadarTooltip(){const tip=$('#radarTooltip');if(tip)tip.hidden=true;}
 function radarHistoryTooltip(c,node,series){
  if(!mean4()||node.level!=='dimension')return '';
+ if(series.some(s=>s.yearSeries)){
+  const en=window.EGCOI18n?.get()==='en',i=c.r.children.findIndex(x=>x.id===node.id);
+  return series.filter(s=>s.yearSeries&&!s.previous).map(s=>{
+   const old=series.find(x=>x.previous&&x.isPeer===s.isPeer)?.values[i],current=s.values[i];
+   if(old==null||current==null)return '';
+   const kind=reportKind==='committee'?'':s.isPeer?(en?' · Peers':' · แบบไขว้'):(en?' · Self':' · ตนเอง');
+   return `<div class="radar-history-row"><span>${en?'Change':'ผลต่าง'}${kind}</span><strong>${signed(current-old)} ${en&&percentView()?'pp':gapUnit()}</strong></div>`;
+  }).join('');
+ }
  const visible=new Set(series.filter(s=>!s.mean).map(s=>s.label));
  const rows=historyValues(c,node.id).filter(x=>visible.has(reportKind==='committee'?'ผลการประเมินรายคณะ':x.cls==='peer'?'ผลการประเมินแบบไขว้':'ผลการประเมินตนเอง'));
  if(!rows.length)return '';
@@ -579,8 +605,8 @@ function radarHistoryTooltip(c,node,series){
 }
 function showRadarTooltip(index,event){
  const data=radarTooltipData,node=data?.nodes[index],tip=$('#radarTooltip');if(!node||!tip)return;
- tip.innerHTML=`<b>${esc(node.node.name)}</b>${data.series.map(s=>`<div><span><i class="legend-line ${s.mean?'dashed':''}" style="--series-color:${s.color}"></i>${esc(s.label)}${mean4()&&!s.mean?' · '+P.year:''}</span><strong>${fmt(s.values[index])}</strong></div>`).join('')}${radarHistoryTooltip(reportContext(),node,data.series)}${mean4()?'':`<small>คะแนนปรับสเกล 0–100 · คลิกเพื่ออ่านบทวิเคราะห์</small>`}`;
- tip.hidden=false;
+ tip.innerHTML=`<b>${esc(node.node.name)}</b>${data.series.map(s=>`<div><span><i class="legend-line ${s.dash?'dashed':''}" style="--series-color:${s.color}"></i>${esc(s.label)}${mean4()&&!s.mean&&!s.yearSeries?' · '+P.year:''}</span><strong>${fmt(s.values[index])}</strong></div>`).join('')}${radarHistoryTooltip(reportContext(),node,data.series)}${mean4()?'':`<small>คะแนนปรับสเกล 0–100 · คลิกเพื่ออ่านบทวิเคราะห์</small>`}`;
+ window.EGCOI18n?.apply(tip);tip.hidden=false;
  const anchor=document.querySelector(`[data-radar-index="${index}"]`),rect=anchor?.getBoundingClientRect(),x=event?.clientX??(rect?rect.x+rect.width/2:180),y=event?.clientY??(rect?rect.y+rect.height/2:180),w=tip.offsetWidth,h=tip.offsetHeight;
  tip.style.left=Math.max(10,Math.min(document.documentElement.clientWidth-w-10,x+16))+'px';tip.style.top=Math.max(10,Math.min(window.innerHeight-h-10,y+16))+'px';
 }
@@ -602,7 +628,7 @@ function resultsMean4(c,ps,pp,gap){const {f,r}=c,com=reportKind==='committee';
  
  const kp=com?'':`<div class="kpis person-kpis">${[kpi('<i class="dot"></i>ผลการประเมินตนเอง',fmt(ps?.value),unitSuffix(),''),kpi('<i class="dot red"></i>ผลการประเมินแบบไขว้',fmt(pp?.value),unitSuffix(),''),kpi('ช่องว่าง ตนเอง − ท่านอื่น',signed(gap),'',gapUnit(),gap>0?'positive':gap<0?'negative':'neutral')].join('')}</div>`;
  const raters=!com&&c.rr?c.rr.respondentIds.map(id=>esc(name(id))).join(' · '):'';
- return `<section class="hero"><div><h2>${esc(reportTarget==='AVERAGE'?`ค่าเฉลี่ยแบบตนเองและแบบไขว้คณะกรรมการบริษัท ${P.people.filter(x=>x.active).length} คน`:name(reportTarget))}</h2><p>${sub}</p>${com?committeeRespondentList(c):''}</div><div class="hero-score">${fmt(r.value)}<small>${percentView()?'ร้อยละ':'คะแนนเฉลี่ย เต็ม 4'}</small></div></section>${kp}${yearSummary(c,ps,pp)}${overviewView(c)}${areaTables(c)}${matchedComparison(c)}${approvedRecommendations(c)}${mode?"":`<section class="panel report-analysis">${inlineAnalysis(c,analysisNode)}</section><div class="method">${scoringMethod()}</div>`}<div class="footer-note">TRIS CORPORATION · EGCO BOARD EVALUATION ${P.year}</div>`;}
+ return `<section class="hero"><div><h2>${esc(reportTarget==='AVERAGE'?`ค่าเฉลี่ยแบบตนเองและแบบไขว้คณะกรรมการบริษัท ${P.people.filter(x=>x.active).length} คน`:name(reportTarget))}</h2><p>${sub}</p>${com?committeeRespondentList(c):''}</div><div class="hero-score">${fmt(r.value)}<small>${percentView()?'ร้อยละ':'คะแนนเฉลี่ย เต็ม 4'}</small></div></section>${kp}${yearSummary(c,ps,pp)}${overviewView(c)}${areaTables(c)}${matchedComparison(c)}${approvedRecommendations(c)}${reportAnalysis(c)}${mode?"":`<div class="method">${scoringMethod()}</div>`}<div class="footer-note">TRIS CORPORATION · EGCO BOARD EVALUATION ${P.year}</div>`;}
 function historyKind(f){return f.kind==='committee'?(f.committeeIds?.[0]||reportTarget):f.kind==='peer'?'PEER':'SELF';}
 function historyValid(f){const q=P.history?.forms?.[f.id];return !!q&&JSON.stringify(q)===JSON.stringify(M.questions(f).map(x=>[x.code,x.text]));}
 function oldStat(f,stat){if(!stat||!historyValid(f))return null;const kind=historyKind(f),code=String(stat.node.code||'');return (stat.level==='dimension'?P.history.dimensions:P.history.items)?.[kind+'|'+code]||null;}
