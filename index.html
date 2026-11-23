@@ -426,10 +426,11 @@ function render(){
 }
 window.addEventListener('egco-language',()=>{render();});
 function approvedRecommendations(c){
+ const comments=respondentComments(c);
  if(c.f.kind!=='committee')return '';
  const lang=window.EGCOI18n?.get()||'th',doc=window.EGCO_DATA.editorial?.recommendations?.[reportTarget]?.[lang];if(!doc)return '';
  const title=lang==='en'?'Areas for development':'ข้อเสนอแนะเพื่อการพัฒนา',action=lang==='en'?'Read recommendations':'กดเพื่ออ่านข้อเสนอแนะ',source=lang==='en'?'Source report':'รายงานต้นทาง';
- return `<section class="panel approved-recommendations"><details><summary><span><b>${title}</b><small>${reportTarget} · ${doc.items.length} ${lang==='en'?'recommendations':'ประเด็น'}</small></span><span class="recommendation-action">${action}</span></summary><div class="recommendation-content" lang="${lang}">${doc.intro?`<p>${esc(doc.intro)}</p>`:''}<ol>${doc.items.map(x=>`<li><h3>${esc(x.title)}</h3><p>${esc(x.text)}</p></li>`).join('')}</ol><p class="recommendation-source"><a href="${esc(doc.source.url)}" target="_blank" rel="noopener noreferrer">${source}: ${esc(doc.source.label)}</a> · ${esc(doc.source.section)}</p></div></details></section>`;
+ return `<section class="panel approved-recommendations"><details><summary><span><b>${title}</b><small>${reportTarget} · ${doc.items.length} ${lang==='en'?'recommendations':'ประเด็น'}</small></span><span class="recommendation-action">${action}</span></summary><div class="recommendation-content" lang="${lang}">${doc.intro?`<p>${esc(doc.intro)}</p>`:''}<ol>${doc.items.map(x=>`<li><h3>${esc(x.title)}</h3><p>${esc(x.text)}</p></li>`).join('')}</ol><p class="recommendation-source"><a href="${esc(doc.source.url)}" target="_blank" rel="noopener noreferrer">${source}: ${esc(doc.source.label)}</a> · ${esc(doc.source.section)}</p>${comments}</div></details></section>`;
 }
 function comparisonContexts(c){return c.f.kind==='committee'?[{kind:reportTarget,r:c.r,f:c.f}]:[{kind:'SELF',r:c.r,f:c.f},{kind:'PEER',r:c.rr,f:c.other}].filter(x=>x.r&&x.f);}
 function matchedComparison(c){
@@ -569,21 +570,25 @@ function committeeRespondentList(c){
  const ids=c.r.respondentIds||[];
  return `<div class="hero-respondents" aria-label="รายชื่อผู้ตอบแบบประเมิน"><p class="respondent-heading">ผู้ตอบที่ใช้คำนวณผล ${ids.length} คน</p>${ids.length?`<ul class="respondent-names">${ids.map(id=>`<li data-respondent-id="${esc(id)}">${esc(name(id))}</li>`).join('')}</ul>`:'<p>ยังไม่มีผู้ตอบที่ให้คะแนน</p>'}</div>`;
 }
+function respondentComments(c){
+ const comments=c.r.rows.filter(r=>(r.comment||'').trim()||r.commentParts?.length),peerComments=c.f.kind!=='committee'?(P.formComments?.[P.compare?.peerFormId]||[]).filter(x=>commentAuthorId(x,'',P.compare.peerFormId)===reportTarget||reportTarget==='AVERAGE'):[];
+ const groups=new Map();const add=(x,raterId,formId)=>{if(!String(x.text??'').trim())return;const author=commentAuthorId(x,raterId,formId),key=author||x.src||'unknown';if(!groups.has(key))groups.set(key,{author,parts:[]});groups.get(key).parts.push({x,formId});};
+ comments.forEach(r=>{const xs=r.commentParts?.length?r.commentParts:[{text:r.comment,section:'ความเห็น/ข้อเสนอแนะ'}];xs.forEach(x=>add(x,r.raterId,r.formId));});peerComments.forEach(x=>add(x,'',P.compare.peerFormId));
+ const rendered=[...groups.values()].map(g=>`<div class="analysis-text respondent-comment" data-comment-author="${esc(g.author)}"><strong class="comment-author">${esc(g.author?name(g.author):'ไม่พบชื่อในข้อมูลต้นทาง')}</strong>${g.parts.map(({x,formId})=>`<span class="comment-body">${getForm(formId)?.kind==='peer'?'แบบไขว้ · ':''}${esc(x.section||'ความเห็น/ข้อเสนอแนะ')}: ${esc(x.text)}</span>`).join('')}</div>`).join('');
+ return `<details class="analysis-extras"><summary>ความเห็นจากผู้ตอบแบบสอบถาม</summary>${rendered||'<p class="analysis-empty">ยังไม่มีความเห็นจากผู้ตอบ</p>'}</details>`;
+}
 function reportAnalysis(c){
- const content=inlineAnalysis(c,analysisNode);
+ const hasRecommendations=c.f.kind==='committee'&&window.EGCO_DATA.editorial?.recommendations?.[reportTarget]?.[window.EGCOI18n?.get()||'th'];
+ if(mode)return hasRecommendations?'':`<section class="panel report-analysis">${respondentComments(c)}</section>`;
+ const content=inlineAnalysis(c,analysisNode,!hasRecommendations);
  return content?`<section class="panel report-analysis">${content}</section>`:'';
 }
-function inlineAnalysis(c,id='root'){
+function inlineAnalysis(c,id='root',includeComments=true){
  let stat=M.findStat(c.r,id)||c.r;
  if(stat.level==='question'){const p=statPath(c.r,id);stat=p?.at(-2)||c.r;}
  const field=stat.id==='root'?'summary':stat.id,prefix=analysisPrefix(c.f,reportTarget),key=prefix+field,v=[P.analyses[key]?.text,stat.id==='root'?P.analyses[prefix+'recommendation']?.text:''].filter(Boolean).join('\n\n'),title=stat.id==='root'?'ภาพรวม':stat.node.name;
  const renderText=(key,text,label)=>mode?`<p class="analysis-text ${text?'':'analysis-empty'}">${esc(text||'ยังไม่มีบทวิเคราะห์')}</p>`:`<textarea aria-label="${esc(label)}" data-input="analysis" data-key="${esc(key)}" placeholder="${mean4()?'ยังไม่มีบทวิเคราะห์ — พิมพ์เพื่อเพิ่ม':'เขียนบทวิเคราะห์'+esc(label)}">${esc(text)}</textarea>`;
- const comments=c.r.rows.filter(r=>(r.comment||'').trim()||r.commentParts?.length),peerComments=c.f.kind!=='committee'?(P.formComments?.[P.compare?.peerFormId]||[]).filter(x=>commentAuthorId(x,'',P.compare.peerFormId)===reportTarget||reportTarget==='AVERAGE'):[];
- const groups=new Map();const add=(x,raterId,formId)=>{if(!String(x.text??'').trim())return;const author=commentAuthorId(x,raterId,formId),key=author||x.src||'unknown';if(!groups.has(key))groups.set(key,{author,parts:[]});groups.get(key).parts.push({x,formId});};
- comments.forEach(r=>{const xs=r.commentParts?.length?r.commentParts:[{text:r.comment,section:'ความเห็น/ข้อเสนอแนะ'}];xs.forEach(x=>add(x,r.raterId,r.formId));});peerComments.forEach(x=>add(x,'',P.compare.peerFormId));
- if(mode&&!v&&!groups.size)return '';
- const rendered=[...groups.values()].map(g=>`<div class="analysis-text respondent-comment" data-comment-author="${esc(g.author)}"><strong class="comment-author">${esc(g.author?name(g.author):'ไม่พบชื่อในข้อมูลต้นทาง')}</strong>${g.parts.map(({x,formId})=>`<span class="comment-body">${getForm(formId)?.kind==='peer'?'แบบไขว้ · ':''}${esc(x.section||'ความเห็น/ข้อเสนอแนะ')}: ${esc(x.text)}</span>`).join('')}</div>`).join('');
- return `<section class="inline-analysis" aria-live="polite"><h3>ข้อสังเกต/ข้อเสนอแนะ</h3>${staleNote(key)}${renderText(key,v,'ข้อสังเกต/ข้อเสนอแนะ')}<details class="analysis-extras"><summary>ความเห็นจากผู้ตอบแบบสอบถาม</summary>${rendered||'<p class="analysis-empty">ยังไม่มีความเห็นจากผู้ตอบ</p>'}</details></section>`;
+ return `<section class="inline-analysis" aria-live="polite"><h3>ข้อสังเกต/ข้อเสนอแนะ</h3>${staleNote(key)}${renderText(key,v,'ข้อสังเกต/ข้อเสนอแนะ')}${includeComments?respondentComments(c):''}</section>`;
 }
 
 function hideRadarTooltip(){const tip=$('#radarTooltip');if(tip)tip.hidden=true;}
