@@ -286,7 +286,36 @@ function common(result,history,kind){
  const areas=result.children.map(d=>{const pairs=d.children.flatMap(q=>{const h=history.items[kind+'|'+q.node.code];return h?.oldCodes?.length&&Number.isFinite(h.pct68)&&Number.isFinite(q.value)?[{code:q.node.code,oldCodes:h.oldCodes,old:h.pct68,current:q.value*25}]:[];});return {code:String(d.node.code),name:d.node.name,pairs,count:pairs.length,old:mean(pairs.map(x=>x.old)),current:mean(pairs.map(x=>x.current))};});
  const pairs=areas.flatMap(x=>x.pairs);return {areas,pairs,count:pairs.length,old:mean(pairs.map(x=>x.old)),current:mean(pairs.map(x=>x.current))};
 }
-const api={common};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.EGCOComparison=api;
+function areaChanges(history,kind,meta){
+ if(!meta)return {};
+ const areas={};
+ const get=code=>areas[code]??={old:0,current:0,added:[],removed:[],merged:[],incoming:[],outgoing:[]};
+ const oldArea=code=>/^\d/.test(code)?code.split('.')[0]:String(code.charCodeAt(0)-'AFI'[kind==='SELF'?1:kind==='PEER'?2:0].charCodeAt(0)+1);
+ const seen=new Set();
+ for(const row of Object.values(history.items)){
+  if(row.kind!==kind||row.code.includes('('))continue;
+  const area=String(row.dimension),bucket=get(area);
+  bucket.current++;
+  if(!row.oldCodes.length)bucket.added.push(row.code);
+  if(row.oldCodes.length>1)bucket.merged.push(row.oldCodes.join(' + ')+' → '+row.code);
+  for(const code of row.oldCodes){
+   const previous=oldArea(code);
+   if(!seen.has(code)){get(previous).old++;seen.add(code);}
+   if(previous!==area){
+    const move=code+' → '+row.code;
+    bucket.incoming.push(move);
+    get(previous).outgoing.push(move);
+   }
+  }
+ }
+ for(const item of meta.removed){
+  const bucket=get(oldArea(item.code));
+  bucket.old++;
+  bucket.removed.push(item.code);
+ }
+ return areas;
+}
+const api={common,areaChanges};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.EGCOComparison=api;
 })(typeof window!=='undefined'?window:globalThis);
 
 /* Presentation-only language layer. Original questionnaire text and scoring stay unchanged. */
@@ -406,7 +435,18 @@ function comparisonContexts(c){return c.f.kind==='committee'?[{kind:reportTarget
 function matchedComparison(c){
  const en=window.EGCOI18n?.get()==='en',t=(th,eng)=>en?eng:th,pct=v=>v==null?'—':number(v,2)+'%',diff=x=>x.old==null||x.current==null?'—':(x.current>x.old?'+':'')+number(x.current-x.old,2),contexts=comparisonContexts(c);
  if(!historyValid(c.f))return '';
- return `<section class="panel matched-comparison" data-original-language><details><summary><b>${t('คะแนนเปรียบเทียบเฉพาะข้อที่มีทั้งปี 2568 และ 2569','Scores for matched items in 2025 and 2026')}</b></summary><div class="comparison-content"><p>${t('เฉลี่ยคะแนนรายข้อเฉพาะข้อที่มีคะแนนทั้งสองปี โดยใช้ข้อชุดเดียวกันและให้น้ำหนักเท่ากัน ข้อเดิมที่ถูกรวมเป็นข้อใหม่จะเฉลี่ยก่อนนำมาเทียบ','Item means are averaged over the same set of scored items in both years, with equal weights. Where previous items were merged, their scores are averaged before comparison.')}</p>${c.f.kind==='committee'?'':`<p>${t('ปี 2568 ใช้ค่าเฉลี่ยรวมของแบบประเมิน ไม่ใช่คะแนนรายบุคคลของกรรมการท่านนั้น','The 2025 values are form-wide averages, rather than the selected director’s individual scores.')}</p>`}${contexts.map(({kind,r})=>{const v=window.EGCOComparison.common(r,P.history,kind),m=window.EGCO_DATA.comparison?.[kind],label=kind==='SELF'?t('ประเมินตนเอง','Self-assessment'):kind==='PEER'?t('ประเมินแบบไขว้','Peer assessment'):kind;return `<h3>${label}</h3><div class="table-wrap"><table class="data-table comparison-table"><thead><tr><th>${t('ด้าน','Area')}</th><th class="num">${t('ข้อที่เทียบ','Matched items')}</th><th class="num">${en?'2025':'2568'}</th><th class="num">${en?'2026':'2569'}</th><th class="num">${t('ผลต่าง (จุดร้อยละ)','Change (pp)')}</th></tr></thead><tbody><tr class="comparison-total"><th>${t('ภาพรวมเฉพาะข้อที่เทียบกันได้','Overall — matched items')}</th><td class="num">${v.count}${m?`<br><small>${m.oldCount} → ${m.newCount} (${t("เพิ่ม","added")} ${m.added.length}, ${t("ตัด","removed")} ${m.removed.length}, ${t("ลดจากการรวม","merge reduction")} ${m.mergedReduction})</small>`:""}</td><td class="num">${pct(v.old)}</td><td class="num">${pct(v.current)}</td><td class="num">${diff(v)}</td></tr>${v.areas.map(a=>`<tr><th>${a.code}. ${esc(en?window.EGCOI18n.text(a.name):a.name)}</th><td class="num">${a.count}</td><td class="num">${pct(a.old)}</td><td class="num">${pct(a.current)}</td><td class="num">${diff(a)}</td></tr>`).join('')}</tbody></table></div>${questionnaireNotes(m,en,t)}<details class="matched-item-list"><summary>${t('ดูรายการข้อที่นำมาเปรียบเทียบ','View matched items')}</summary><div class="table-wrap"><table class="data-table"><thead><tr><th>${en?'2026':'2569'}</th><th>${en?'2025':'2568'}</th><th class="num">${en?'2025 (%)':'2568 (%)'}</th><th class="num">${en?'2026 (%)':'2569 (%)'}</th></tr></thead><tbody>${v.pairs.map(q=>`<tr><td>${esc(q.code)}</td><td>${esc(q.oldCodes.join(' + '))}</td><td class="num">${pct(q.old)}</td><td class="num">${pct(q.current)}</td></tr>`).join('')}</tbody></table></div></details>`;}).join('')}</div></details></section>`;
+ return `<section class="panel matched-comparison" data-original-language><details><summary><b>${t('คะแนนเปรียบเทียบเฉพาะข้อที่มีทั้งปี 2568 และ 2569','Scores for matched items in 2025 and 2026')}</b></summary><div class="comparison-content"><p>${t('เฉลี่ยคะแนนรายข้อเฉพาะข้อที่มีคะแนนทั้งสองปี โดยใช้ข้อชุดเดียวกันและให้น้ำหนักเท่ากัน ข้อเดิมที่ถูกรวมเป็นข้อใหม่จะเฉลี่ยก่อนนำมาเทียบ','Item means are averaged over the same set of scored items in both years, with equal weights. Where previous items were merged, their scores are averaged before comparison.')}</p>${c.f.kind==='committee'?'':`<p>${t('ปี 2568 ใช้ค่าเฉลี่ยรวมของแบบประเมิน ไม่ใช่คะแนนรายบุคคลของกรรมการท่านนั้น','The 2025 values are form-wide averages, rather than the selected director’s individual scores.')}</p>`}${contexts.map(({kind,r})=>{const v=window.EGCOComparison.common(r,P.history,kind),m=window.EGCO_DATA.comparison?.[kind],changes=window.EGCOComparison.areaChanges(P.history,kind,m),label=kind==='SELF'?t('ประเมินตนเอง','Self-assessment'):kind==='PEER'?t('ประเมินแบบไขว้','Peer assessment'):kind;return `<h3>${label}</h3><div class="table-wrap"><table class="data-table comparison-table"><thead><tr><th>${t('ด้าน','Area')}</th><th class="num">${t('ข้อที่เทียบ','Matched items')}</th><th class="num">${en?'2025':'2568'}</th><th class="num">${en?'2026':'2569'}</th><th class="num">${t('ผลต่าง (จุดร้อยละ)','Change (pp)')}</th></tr></thead><tbody><tr class="comparison-total"><th>${t('ภาพรวมเฉพาะข้อที่เทียบกันได้','Overall — matched items')}</th><td class="num">${v.count}${m?`<br><small>${m.oldCount} → ${m.newCount} (${t("เพิ่ม","added")} ${m.added.length}, ${t("ตัด","removed")} ${m.removed.length}, ${t("ลดจากการรวม","merge reduction")} ${m.mergedReduction})</small>`:""}</td><td class="num">${pct(v.old)}</td><td class="num">${pct(v.current)}</td><td class="num">${diff(v)}</td></tr>${v.areas.map(a=>`<tr><th>${a.code}. ${esc(en?window.EGCOI18n.text(a.name):a.name)}</th><td class="num">${a.count}${areaChangeText(changes[a.code],t)}</td><td class="num">${pct(a.old)}</td><td class="num">${pct(a.current)}</td><td class="num">${diff(a)}</td></tr>`).join('')}</tbody></table></div>${questionnaireNotes(m,en,t)}<details class="matched-item-list"><summary>${t('ดูรายการข้อที่นำมาเปรียบเทียบ','View matched items')}</summary><div class="table-wrap"><table class="data-table"><thead><tr><th>${en?'2026':'2569'}</th><th>${en?'2025':'2568'}</th><th class="num">${en?'2025 (%)':'2568 (%)'}</th><th class="num">${en?'2026 (%)':'2569 (%)'}</th></tr></thead><tbody>${v.pairs.map(q=>`<tr><td>${esc(q.code)}</td><td>${esc(q.oldCodes.join(' + '))}</td><td class="num">${pct(q.old)}</td><td class="num">${pct(q.current)}</td></tr>`).join('')}</tbody></table></div></details>`;}).join('')}</div></details></section>`;
+}
+function areaChangeText(area,t){
+ if(!area)return '';
+ const lines=[
+  [t('เพิ่ม','Added'),area.added],
+  [t('ตัด','Removed'),area.removed],
+  [t('รวม','Merged'),area.merged],
+  [t('ย้ายเข้า','Moved in'),area.incoming],
+  [t('ย้ายออก','Moved out'),area.outgoing]
+ ].filter(([,items])=>items.length).map(([label,items])=>label+' '+items.length+' ('+items.join(', ')+')');
+ return `<br><small style="white-space:normal">${area.old} → ${area.current}${lines.length?'<br>'+esc(lines.join(' · ')):''}</small>`;
 }
 function questionnaireNotes(m,en,t){
  if(!m)return '';
